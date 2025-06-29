@@ -59,36 +59,50 @@
                     <div class="tabs-header d-flex justify-content-between border-bottom my-5">
                         <h3>Produk</h3>
                     </div>
+
                     <div class="tab-content" id="nav-tabContent">
                         <div class="tab-pane fade show active" id="nav-all" role="tabpanel" aria-labelledby="nav-all-tab">
-                            <div class="product-grid row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                            <div class="product-grid row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-3">
                                 @foreach ($product as $item)
                                 <div class="col">
-                                    <div class="product-item d-flex flex-column justify-content-between p-2 h-100" style="min-height: 380px;">
-                                        <a href="#" class="btn-wishlist"><svg width="24" height="24">
-                                                <use xlink:href="#heart"></use>
-                                            </svg></a>
-                                        <figure>
+                                    <div class="product-item d-flex flex-column justify-content-between p-3 border rounded shadow-sm h-100" style="min-height: 380px;">
+                                        <div class="d-flex justify-content-end mb-2">
+                                            <a href="#" class="btn-wishlist">
+                                                <svg width="24" height="24">
+                                                    <use xlink:href="#heart"></use>
+                                                </svg>
+                                            </a>
+                                        </div>
+
+                                        <figure class="mb-2">
                                             <a href="#" title="Product Title">
-                                              <img src="{{ asset('storage/'.$item->gambar) }}" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px;">
+                                                <img src="{{ asset('storage/'.$item->gambar) }}" 
+                                                    style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px;" 
+                                                    alt="{{ $item->nama }}">
                                             </a>
                                         </figure>
-                                        <h3>{{ $item->nama }}</h3>
-                                        <span class="qty">Kategori</span>
-                                        <span class="rating"><svg width="10" height="10" class="text-primary"></svg>{{ $item->category->nama }}</span>
-                                        <span class="price">Rp. {{ number_format($item->harga, 0, ',', '.') }}</span>
-                                        <form action="{{ route('order.create') }}" method="POST" class="mt-2" style="{{ $item->stok == 0 ? 'display: none;' : '' }}">
+
+                                        <h5 class="mb-1">{{ $item->nama }}</h5>
+                                        <span class="qty small text-muted">Kategori</span>
+                                        <span class="rating d-block mb-1">
+                                            <svg width="10" height="10" class="text-primary me-1"></svg>
+                                            <span class="small">{{ $item->category->nama }}</span>
+                                        </span>
+                                        <span class="price fw-bold text-dark mb-2">Rp. {{ number_format($item->harga, 0, ',', '.') }}</span>
+
+                                        <form action="{{ route('order.create') }}" method="POST" class="mt-auto" style="{{ $item->stok == 0 ? 'display: none;' : '' }}">
                                             @csrf
                                             <input type="hidden" name="items[0][product_id]" value="{{ $item->id }}">
-                                          <div class="d-flex align-items-center gap-2 mt-2">
-    <div class="input-group" style="max-width: 100px;">
-        <input type="number" name="items[0][quantity]" class="form-control form-control-sm text-center" value="1" min="1" max="{{ $item->stok }}" required>
-    </div>
-    <button type="submit" class="btn btn-sm btn-primary d-flex align-items-center gap-1">
-        <span>Masukkan</span>
-        <svg width="16" height="16"><use xlink:href="#cart"></use></svg>
-    </button>
-</div>
+
+                                            <div class="d-flex align-items-center gap-2 mt-2">
+                                                <div class="input-group" style="max-width: 100px;">
+                                                    <input type="number" name="items[0][quantity]" class="form-control form-control-sm text-center" value="1" min="1" max="{{ $item->stok }}" required>
+                                                </div>
+                                                <button type="submit" class="btn btn-sm btn-primary d-flex align-items-center gap-1">
+                                                    <span>Masukkan Ke</span>
+                                                    <svg width="16" height="16"><use xlink:href="#cart"></use></svg>
+                                                </button>
+                                            </div>
                                         </form>
                                     </div>
                                 </div>
@@ -101,4 +115,5 @@
         </div>
     </div>
 </section>
+
 @endsection
