@@ -8,15 +8,15 @@
             <div class="order-md-last">
                 <h4 class="d-flex justify-content-between align-items-center mb-3">
                     <span class="text-primary">Keranjang Belanja</span>
-                    @if(isset($latestOrder) && $latestOrder)
-                        <span class="badge bg-primary rounded-pill">{{ $latestOrder->orderProduct->count() }}</span>
+                    @if(isset($latestOrders) && $latestOrders)
+                        <span class="badge bg-primary rounded-pill">{{ $latestOrders->orderProduct->count() }}</span>
                     @else
                         <span class="badge bg-primary rounded-pill">0</span>
                     @endif
                 </h4>
                 <ul class="list-group mb-3">
-                    @if(isset($latestOrder) && $latestOrder)
-                        @foreach($latestOrder->orderProduct as $item)
+                    @if(isset($latestOrders) && $latestOrders)
+                        @foreach($latestOrders->orderProduct as $item)
                             <li class="list-group-item d-flex justify-content-between lh-sm">
                                 <div>
                                     <h6 class="my-0">{{ $item->product->nama }}</h6>
@@ -32,7 +32,7 @@
                         @endforeach
                         <li class="list-group-item d-flex justify-content-between">
                             <span>Total</span>
-                            <strong>Rp {{ number_format($latestOrder->total_harga, 0, ',', '.') }}</strong>
+                            <strong>Rp {{ number_format($latestOrders->total_harga, 0, ',', '.') }}</strong>
                         </li>
                     @else
                         <li class="list-group-item text-center py-3">
@@ -41,8 +41,8 @@
                     @endif
                 </ul>
 
-                @if(isset($latestOrder) && $latestOrder)
-                    <a href="{{ route('orders.detail', $latestOrder->id) }}" class="w-100 btn btn-primary btn-lg">
+                @if(isset($latestOrders) && $latestOrders)
+                    <a href="{{ route('orders.detail', $latestOrders->id) }}" class="w-100 btn btn-primary btn-lg">
                         Lihat Detail Pesanan
                     </a>
                 @else
@@ -175,8 +175,8 @@
                             data-bs-toggle="offcanvas" data-bs-target="#offcanvasCart" aria-controls="offcanvasCart">
                             <span class="fs-6 text-muted dropdown-toggle">Keranjang</span>
                             <span class="cart-total fs-5 fw-bold">
-                                @if(isset($latestOrder) && $latestOrder)
-                                    Rp {{ number_format($latestOrder->total_harga, 0, ',', '.') }}
+                                @if(isset($latestOrders) && $latestOrders)
+                                    Rp {{ number_format($latestOrders->total_harga, 0, ',', '.') }}
                                 @else
                                     Rp 0
                                 @endif

@@ -1,20 +1,21 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderProduct;
-use App\Models\Product;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+use App\Models\Category;
+use App\Models\Product;
+use Illuminate\Support\Facades\Auth;
 
 class EcommerceController extends Controller
 {
     public function index()
     {
         $categories = Category::all();
-        $product    = Product::all();
+        $product = Product::all();
         return view('welcome', compact('categories', 'product'));
     }
 
@@ -24,60 +25,68 @@ class EcommerceController extends Controller
             DB::transaction(function () use ($request) {
                 $existingPendingOrder = Order::where('user_id', Auth::id())
                     ->where('status', 'pending')
+                    ->latest()
                     ->first();
-                
-                if (!$existingPendingOrder) { 
-                    $order = Order::create([
-                        'user_id' => Auth::id(),
-                        'total_harga' => 0, 
-                        'status'  => 'pending',
-                    ]);
-                } else {
-                    $order = $existingPendingOrder;
-                }
-                $totalHarga = 0;
 
-                if($existingPendingOrder){
-                    $totalHarga = $existingPendingOrder->total_harga;
-                }
+                    // Jika tidak ada order pending, buat order baru
+                    // jika ada, gunakan order yang sudah ada
 
-                foreach($request->items as $item) {
-                    $product = Product::findOrFail($item['product_id']);
-                    $subtotal = $product->harga * $item['quantity'];
+                    if (!$existingPendingOrder) {
+                        $order = Order::create([
+                            'user_id' => Auth::id(),
+                            'total_harga' => 0,
+                            'status' => 'pending',
+                        ]);
+                    } else {
+                        $order = $existingPendingOrder;
+                    }
 
-                    $existingItem = OrderProduct::where('order_id', $order->id)
+                    $totalHarga = 0;
+
+                    if ($existingPendingOrder) {
+                        $totalHarga = $existingPendingOrder->total_harga;
+                    }
+
+                    foreach ($request->items as $item){
+                        $product = Product::findOrFail($item['product_id']);
+                        $subtotal = $product->harga * $item['quantity'];
+
+                        $existingItem = OrderProduct::where('order_id',$order->id)
                         ->where('product_id', $product->id)
                         ->first();
 
                         if ($existingItem) {
-                    $newQuantity = $existingItem->quantity + $item['quantity'];
-                    $newSubtotal = $product->harga * $newQuantity;           
-                    
-                    $existingItem->quantity = $newQuantity;
-                    $existingItem->subtotal = $newSubtotal;
-                    $existingItem->save();
+                            $oldSubTotal = $existingItem->subtotal;
+                            $newQuantity = $existingItem->quantity + $item['quantity'];
+                            $newSubTotal = $product->harga * $newQuantity;
 
-                    $totalHarga = $totalHarga - $existingItem->subtotal + $newSubtotal;
-                } else {
-                    OrderProduct::create([
-                        'order_id' => $order->id,
-                        'product_id' => $product->id,
-                        'quantity' => $item['quantity'],
-                        'subtotal' => $subtotal,
-                    ]);
-                    $totalHarga += $subtotal;
-                }
-                }
-                $order->total_harga = $totalHarga;
-                $order->save();
+                            $existingItem->quantity = $newQuantity;
+                            $existingItem->subtotal = $newSubTotal;
+                            $existingItem->save();
+
+                             $totalHarga = $totalHarga - $oldSubTotal + $newSubTotal;
+                            // 18.000 - 18.000 + 21.000
+                        } else {
+                            OrderProduct::create([
+                                'order_id' => $order->id,
+                                'product_id' => $product->id,
+                                'quantity' => $item['quantity'],
+                                'subtotal' => $subtotal,
+                            ]);
+
+                            $totalHarga += $subtotal;
+                        }
+                    }
+
+                    $order->total_harga = $totalHarga;
+                    $order->save();
             });
-            $productName = Product::findOrFail($request->items[0]['product_id'])->nama;
-            $quantity = $request->items[0]['quantity'];
-            return redirect()->route('home')->with('success', "$quantity x $productName added to cart successfully.");  
 
-    
+                $productName = Product::findOrFail($request->items[0]['product_id'])->name;
+                $quantity = $request->items[0]['quantity'];
+            return redirect()->route('home')->with('success','Berhasil ditambahkan ke keranjang');
         } catch (\Exception $e) {
-            return redirect()->route('home')->with('error','Error' . $e->getMessage());
+            return redirect()->route('home')->with('error', 'Error' . $e->getMessage());
         }
     }
 
