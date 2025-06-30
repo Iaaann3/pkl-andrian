@@ -51,9 +51,9 @@ Route::get('latihan-js', function () {
 
 // Route Admin
 Route::group([
-    'prefix' => 'admin',
-    'as' => 'admin.',
-    'middleware' => ['auth', isAdmin::class]
+    'prefix'     => 'admin',
+    'as'         => 'admin.',
+    'middleware' => ['auth', isAdmin::class],
 ], function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::resource('category', CategoryController::class);
@@ -63,20 +63,20 @@ Route::group([
 Route::get('/', [EcommerceController::class, 'index'])->name('home');
 // Route Pembelanjaan
 Route::group([
-    'middleware' => ['auth']
-], function(){
-    Route::post('/order',[EcommerceController::class,'createOrder'])
-    ->name('order.create');
-    Route::post('/checkout',[EcommerceController::class,'checkOut']
+    'middleware' => ['auth'],
+], function () {
+    Route::post('/order', [EcommerceController::class, 'createOrder'])
+        ->name('order.create');
+    Route::post('/checkout', [EcommerceController::class, 'checkOut']
     )->name('checkout');
-    Route::get('/my-orders',[EcommerceController::class,'myOrders'])
-    ->name('orders.my');
-    Route::get('/my-orders/{id}',[EcommerceController::class,'orderDetail'])
-    ->name('orders.detail');
-    Route::post('order/update-quantity',[EcommerceController::class,'updateQuantity'])
-    ->name('order.update-quantity');
-    Route::post('/order/remove-item',[EcommerceController::class,'removeItem'])
-    ->name('order.remove-item');
+    Route::get('/my-orders', [EcommerceController::class, 'myOrders'])
+        ->name('orders.my');
+    Route::get('/my-orders/{id}', [EcommerceController::class, 'orderDetail'])
+        ->name('orders.detail');
+    Route::post('order/update-quantity', [EcommerceController::class, 'updateQuantity'])
+        ->name('order.update-quantity');
+    Route::post('/order/remove-item', [EcommerceController::class, 'removeItem'])
+        ->name('order-remove-item');
 });
 
 Route::get('/dashboard', function () {

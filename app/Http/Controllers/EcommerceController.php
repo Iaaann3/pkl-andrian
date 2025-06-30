@@ -64,7 +64,7 @@ class EcommerceController extends Controller
                             $existingItem->subtotal = $newSubTotal;
                             $existingItem->save();
 
-                             $totalHarga = $totalHarga - $oldSubTotal + $newSubTotal;
+                            $totalHarga = $totalHarga - $oldSubTotal + $newSubTotal;
                             // 18.000 - 18.000 + 21.000
                         } else {
                             OrderProduct::create([
@@ -92,12 +92,16 @@ class EcommerceController extends Controller
 
     public function myOrders()
     {
-
     }
 
     public function orderDetail($id)
     {
+        $order = Order::with('orderProduct.product')
+            ->where('id', $id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
 
+        return view('orders.detail', compact('order'));
     }
 
     public function updateQuantity(Request $request)

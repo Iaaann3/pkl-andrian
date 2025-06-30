@@ -23,7 +23,7 @@
                                     <small class="text-body-secondary">{{ $item->quantity }}x</small>
                                     @if($item->product->deskripsi)
                                         <small class="text-body-secondary d-block">
-                                            {{ \Illuminate\Support\Str::limit($item->product->deskripsi, 50) }}
+                                            {{ \Illuminate\Support\Str::limit($item->product->deskripsi, 255) }}
                                         </small>
                                     @endif
                                 </div>
