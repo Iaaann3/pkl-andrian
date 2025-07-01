@@ -34,7 +34,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h4 class="mb-0">Product yang di pesan</h4>
+                    <h4 class="mb-0">Produk yang di pesan</h4>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">

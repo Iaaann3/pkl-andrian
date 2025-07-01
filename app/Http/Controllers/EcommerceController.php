@@ -1,21 +1,20 @@
 <?php
-
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderProduct;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request;
-use App\Models\Category;
 use App\Models\Product;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class EcommerceController extends Controller
 {
     public function index()
     {
         $categories = Category::all();
-        $product = Product::all();
+        $product    = Product::all();
         return view('welcome', compact('categories', 'product'));
     }
 
@@ -28,63 +27,63 @@ class EcommerceController extends Controller
                     ->latest()
                     ->first();
 
-                    // Jika tidak ada order pending, buat order baru
-                    // jika ada, gunakan order yang sudah ada
+                // Jika tidak ada order pending, buat order baru
+                // jika ada, gunakan order yang sudah ada
 
-                    if (!$existingPendingOrder) {
-                        $order = Order::create([
-                            'user_id' => Auth::id(),
-                            'total_harga' => 0,
-                            'status' => 'pending',
-                        ]);
-                    } else {
-                        $order = $existingPendingOrder;
-                    }
+                if (! $existingPendingOrder) {
+                    $order = Order::create([
+                        'user_id'     => Auth::id(),
+                        'total_harga' => 0,
+                        'status'      => 'pending',
+                    ]);
+                } else {
+                    $order = $existingPendingOrder;
+                }
 
-                    $totalHarga = 0;
+                $totalHarga = 0;
 
-                    if ($existingPendingOrder) {
-                        $totalHarga = $existingPendingOrder->total_harga;
-                    }
+                if ($existingPendingOrder) {
+                    $totalHarga = $existingPendingOrder->total_harga;
+                }
 
-                    foreach ($request->items as $item){
-                        $product = Product::findOrFail($item['product_id']);
-                        $subtotal = $product->harga * $item['quantity'];
+                foreach ($request->items as $item) {
+                    $product  = Product::findOrFail($item['product_id']);
+                    $subtotal = $product->harga * $item['quantity'];
 
-                        $existingItem = OrderProduct::where('order_id',$order->id)
+                    $existingItem = OrderProduct::where('order_id', $order->id)
                         ->where('product_id', $product->id)
                         ->first();
 
-                        if ($existingItem) {
-                            $oldSubTotal = $existingItem->subtotal;
-                            $newQuantity = $existingItem->quantity + $item['quantity'];
-                            $newSubTotal = $product->harga * $newQuantity;
+                    if ($existingItem) {
+                        $oldSubTotal = $existingItem->subtotal;
+                        $newQuantity = $existingItem->quantity + $item['quantity'];
+                        $newSubTotal = $product->harga * $newQuantity;
 
-                            $existingItem->quantity = $newQuantity;
-                            $existingItem->subtotal = $newSubTotal;
-                            $existingItem->save();
+                        $existingItem->quantity = $newQuantity;
+                        $existingItem->subtotal = $newSubTotal;
+                        $existingItem->save();
 
-                            $totalHarga = $totalHarga - $oldSubTotal + $newSubTotal;
-                            // 18.000 - 18.000 + 21.000
-                        } else {
-                            OrderProduct::create([
-                                'order_id' => $order->id,
-                                'product_id' => $product->id,
-                                'quantity' => $item['quantity'],
-                                'subtotal' => $subtotal,
-                            ]);
+                        $totalHarga = $totalHarga - $oldSubTotal + $newSubTotal;
+                        // 18.000 - 18.000 + 21.000
+                    } else {
+                        OrderProduct::create([
+                            'order_id'   => $order->id,
+                            'product_id' => $product->id,
+                            'quantity'   => $item['quantity'],
+                            'subtotal'   => $subtotal,
+                        ]);
 
-                            $totalHarga += $subtotal;
-                        }
+                        $totalHarga += $subtotal;
                     }
+                }
 
-                    $order->total_harga = $totalHarga;
-                    $order->save();
+                $order->total_harga = $totalHarga;
+                $order->save();
             });
 
-                $productName = Product::findOrFail($request->items[0]['product_id'])->name;
-                $quantity = $request->items[0]['quantity'];
-            return redirect()->route('home')->with('success','Berhasil ditambahkan ke keranjang');
+            $productName = Product::findOrFail($request->items[0]['product_id'])->name;
+            $quantity    = $request->items[0]['quantity'];
+            return redirect()->route('home')->with('success', 'Berhasil ditambahkan ke keranjang');
         } catch (\Exception $e) {
             return redirect()->route('home')->with('error', 'Error' . $e->getMessage());
         }
@@ -92,6 +91,12 @@ class EcommerceController extends Controller
 
     public function myOrders()
     {
+        $orders = Order::with('orderProduct.product')
+            ->where('user_id', Auth::id())
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('orders.index', compact('orders'));
     }
 
     public function orderDetail($id)
@@ -106,6 +111,26 @@ class EcommerceController extends Controller
 
     public function updateQuantity(Request $request)
     {
+        $request->validate([
+            'order_product_id' => 'required|exists:order_products,id',
+            'quantity'         => 'required|integer|min:1',
+        ]);
+
+        DB::transaction(function () use ($request) {
+            $orderProduct = OrderProduct::findOrFail($request->order_product_id);
+            $product      = Product::findOrFail($orderProduct->product_id);
+            $order        = Order::findOrFail($orderProduct->order_id);
+
+            if($order->user_id != Auth::user()->id){
+                throw new \Exception('Akses Tidak Sah untuk pesanan ini.');
+            }
+            if($order->status !== 'pending'){
+                throw new \Exception('Tidak dapat mengubah jumlah produk pada pesanan yang sudah selesai atau dibatalkan.');
+            }
+            if ($request->quantity > $product->stok) {
+                throw new \Exception('Maaf, hanya tersedia {product->stok} barang untuk.');
+            }
+        });
 
     }
 
