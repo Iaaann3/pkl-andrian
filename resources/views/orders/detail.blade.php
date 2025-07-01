@@ -55,7 +55,7 @@
                                 </td>
                                 <td>
                                     @if ($item->product->gambar)
-                                        <img src="{{ asset('storage/' . $item->product->gambar) }}" alt="{{ $item->product->nama }}">
+                                        <img src="{{ asset('storage/' . $item->product->gambar) }}" alt="{{ $item->product->nama }}" style="width: 80px; height: 80px">
                                     @else
                                         <div class="bg-light text-center p-2" style="width: 80px; height: 80px">
                                             Tidak Ada Gambar
@@ -73,6 +73,7 @@
                                         <input type="number" name="quantity" value="{{ $item->quantity }}" min="1" max="{{ $item->product->stok }}" class="form-control me-2" style="width: 80px;">
                                         <button type="submit" class="btn btn-outline-primary ms-2">Perbarui</button>
                                     </form>
+                                    <small class="text-muted d-blok mt-1">Tersedia : {{ $item->product->stok }}</small>
                                     @else
                                     {{ $item->quantity }}
                                     @endif

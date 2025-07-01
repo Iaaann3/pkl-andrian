@@ -111,36 +111,126 @@ class EcommerceController extends Controller
 
     public function updateQuantity(Request $request)
     {
-        $request->validate([
+        try { $request->validate([
             'order_product_id' => 'required|exists:order_products,id',
             'quantity'         => 'required|integer|min:1',
         ]);
 
-        DB::transaction(function () use ($request) {
-            $orderProduct = OrderProduct::findOrFail($request->order_product_id);
-            $product      = Product::findOrFail($orderProduct->product_id);
-            $order        = Order::findOrFail($orderProduct->order_id);
+            DB::transaction(function () use ($request) {
+                $orderProduct = OrderProduct::findOrFail($request->order_product_id);
+                $product      = Product::findOrFail($orderProduct->product_id);
+                $order        = Order::findOrFail($orderProduct->order_id);
 
-            if($order->user_id != Auth::user()->id){
-                throw new \Exception('Akses Tidak Sah untuk pesanan ini.');
-            }
-            if($order->status !== 'pending'){
-                throw new \Exception('Tidak dapat mengubah jumlah produk pada pesanan yang sudah selesai atau dibatalkan.');
-            }
-            if ($request->quantity > $product->stok) {
-                throw new \Exception('Maaf, hanya tersedia {product->stok} barang untuk.');
-            }
-        });
+                if ($order->user_id != Auth::user()->id) {
+                    throw new \Exception('Akses Tidak Sah untuk pesanan ini.');
+                }
+                if ($order->status !== 'pending') {
+                    throw new \Exception('Tidak dapat mengubah jumlah produk pada pesanan yang sudah selesai atau dibatalkan.');
+                }
+                if ($request->quantity > $product->stok) {
+                    throw new \Exception("Maaf, hanya tersedia {$product->stok} barang untuk {$product->nama}.");
+                }
 
+                $oldSubtotal = $orderProduct->subtotal;
+                $newSubtotal = $product->harga * $request->quantity;
+
+                $orderProduct->quantity = $request->quantity;
+                $orderProduct->subtotal = $newSubtotal;
+                $orderProduct->save();
+
+                $order->total_harga = $order->total_harga - $oldSubtotal + $newSubtotal;
+                $order->save();
+            });
+            return redirect()->back()->with("success", 'Jumlah Produk berhasil diperbarui');} catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
     }
 
     public function removeItem(Request $request)
     {
+        try {
+            $request->validate([
+                'order_product_id' => 'required|exists:order_products,id',
+            ]);
+            $orderDeleted = false;
+            $message      = '';
 
+            DB::transaction(function () use ($request, &$orderDeleted, &$message) {
+                $orderProduct = OrderProduct::findOrFail($request->order_product_id);
+                $order        = Order::findOrFail($orderProduct->order_id);
+                $productName  = Product::findOrFail($orderProduct->product_id)->nama;
+
+                if ($order->user_id !== Auth::id()) {
+                    throw new \Exception('Akses tidak sah untuk pesanan ini');
+                }
+                if ($order->status !== 'pending') {
+                    throw new \Exception('Tidak Dapat Mengubah pesanan yang telah selesai.');
+                }
+                $orderId = $order->id;
+                $order->total_harga -= $orderProduct->subtotal;
+                $order->save();
+
+                $orderProduct->delete();
+                
+                $remainingCount = OrderProduct::where('order_id', $orderId)->count();
+                if ($remainingCount === 0) {
+                    $order->delete();
+                    $orderDeleted = true;
+                    $message      = 'Pesanan dihapus karena tidak ada produk di dalamnya.';
+                }
+            });
+            if ($orderDeleted) {
+                return redirect()->route('orders.my')->with('info', $message);
+            }
+            return redirect()->back()->with('success', 'Produk Berhasil dihapus dari pesanan.');
+        } catch (\Exception $e) {
+            if ($e instanceof \Illuminate\Validation\ValidationException) {
+                return redirect()->back()->with('error', $e->validator->errors()->first());
+            }
+            return redirect()->route('orders.my')->with('error', $e->getMessage());
+        }
     }
 
     public function checkOut(Request $request)
     {
+        try
+        {
+            return DB::transaction(function () use ($request) {
+                $order = Order::with('orderProduct.product')->findOrFail($request->order_id);
+                if ($order->user_id != Auth::id()) {
+                    return redirect()->route('orders.my')->with('error', 'Akses Tidak Sah untuk pesanan ini.');
+                }
 
+                if ($order->status !== 'pending') {
+                    return redirect()->route('orders.detail', $order->id)->with('error', 'Pesanan ini sudah selesai');
+                }
+
+                if ($order->orderProduct->isEmpty()) {
+                    return redirect()->route('orders.my')->with('error', 'Tidak dapat melakukan checkout pada pesanan yang kosong.');
+                }
+
+                $insufficientStock = [];
+                foreach ($order->orderProduct as $item) {
+                    $product = $item->product;
+                    if ($item->stok < $product->quantity) {
+                        $insufficientStock[] = "($product->nama) (requested: ($item->quantity), available: ($product->stok))";
+                    }
+                }
+                if (! empty($insufficientStock)) {
+                    $productList = implode(', ', $insufficientStock);
+                    return redirect()->route('orders.detail', $order->id)->with('error', "Stok tidak mencukupi untuk produk berikut: {$productList}");
+                }
+                foreach ($order->orderProduct as $item) {
+                    $product = $item->product;
+                    $product->stok -= $item->quantity;
+                    $product->save();
+                }
+                $order->status = 'completed';
+                $order->save();
+                return redirect()->route('orders.detail', $order->id)->with('success', 'Pembayaran Berhasil, terima kasih telah checkout!');
+            });
+        } catch (\Exception $e) {
+            return redirect()->route('orders.my')->with('error', 'Terjadi Kesalahan saat checkout : ' . $e->getMessage());
+        }
     }
 }
